@@ -49,7 +49,7 @@ def make_coverage_map(static, scene, height_m: float = 35.0):
 
 
 def main():
-    p = argparse.ArgumentParser(description="MarsupialRF — Coverage maps")
+    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Coverage maps")
     p.add_argument("--height",    type=float, default=35.,
                    help="Z height slice for the coverage maps (metres)")
     p.add_argument("--save",      type=str,   default="",
@@ -127,7 +127,7 @@ def main():
     axes[1].set_title(f'Anchor Power Map  (z≈{args.height}m)', color='white')
     axes[1].set_xlabel('X (m)', color='white'); axes[1].set_ylabel('Y (m)', color='white')
 
-    plt.suptitle(f'MarsupialRF Coverage Maps — {args.height}m slice', color='white', fontsize=13)
+    plt.suptitle(f'multipath-passive-radar-sim Coverage Maps — {args.height}m slice', color='white', fontsize=13)
     plt.tight_layout()
 
     if args.save:

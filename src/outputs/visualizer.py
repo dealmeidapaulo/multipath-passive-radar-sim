@@ -201,7 +201,7 @@ def plot_from_static(
     uav_states  : List[np.ndarray],
     uav_vels    : Optional[List[np.ndarray]] = None,
     dt          : float = 1.0,
-    title       : str   = "MarsupialRF — UAV Trajectory",
+    title       : str   = "multipath-passive-radar-sim",
 ) -> go.Figure:
     """
     Build an interactive Plotly figure with:

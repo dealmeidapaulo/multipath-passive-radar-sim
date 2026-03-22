@@ -57,7 +57,7 @@ def make_two_tx_scene(
 
 
 def main():
-    p = argparse.ArgumentParser(description="MarsupialRF — Two TX scenario")
+    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Two TX scenario")
     p.add_argument("--rays",       type=int,   default=50_000)
     p.add_argument("--frames",     type=int,   default=5)
     p.add_argument("--dt",         type=float, default=1.)
@@ -68,7 +68,7 @@ def main():
     args = p.parse_args()
 
     print("\n" + "="*52)
-    print("  MarsupialRF — Two-TX Scenario")
+    print("  multipath-passive-radar-sim — Two-TX Scenario")
     print("="*52)
 
     scene  = make_two_tx_scene(n_rays=args.rays, roughness=args.roughness)
@@ -120,7 +120,7 @@ def main():
     if not args.no_plot:
         fig = plot_from_static(
             scene, fv, fo, fu, us, uav_vels=vl, dt=args.dt,
-            title="MarsupialRF — Two TX (700 MHz each)",
+            title="multipath-passive-radar-sim — Two TX (700 MHz each)",
         )
         fig.show()
 

@@ -43,7 +43,7 @@ def check_uav_collision(uav_pos, uav_rad, obstacles):
 
 
 def main():
-    p = argparse.ArgumentParser(description="MarsupialRF — Urban UAV Trajectory")
+    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Urban UAV Trajectory")
 
     # Geometry
     p.add_argument("--rays",      type=int,   default=100_000)
@@ -90,7 +90,7 @@ def main():
     args = p.parse_args()
 
     print("\n" + "="*52)
-    print("  MarsupialRF — Kinematic UAV Trajectory (v4 GPU)")
+    print("  multipath-passive-radar-sim — Kinematic UAV Trajectory (v4 GPU)")
     print("="*52)
 
     # ── Scene ─────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ def main():
         fig = plot_from_static(
             scene, fv_list, fo_list, fu_list, us_list,
             uav_vels=vel_list, dt=args.dt,
-            title=f"MarsupialRF main.py — {args.freq/1e6:.0f}MHz",
+            title=f"multipath-passive-radar-sim main.py — {args.freq/1e6:.0f}MHz",
         )
         fig.show()
 

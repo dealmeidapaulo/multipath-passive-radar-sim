@@ -41,7 +41,7 @@ def check_uav_collision(uav_pos, uav_rad, obstacles):
 
 
 def main():
-    p = argparse.ArgumentParser(description="MarsupialRF — Batch Dataset Generator")
+    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Batch Dataset Generator")
 
     p.add_argument("--out_csv",         type=str,   default="batch_dataset.csv")
     p.add_argument("--trajectories",    type=int,   default=100)
@@ -72,7 +72,7 @@ def main():
     args = p.parse_args()
 
     print("\n" + "="*52)
-    print("  MarsupialRF — Batch Generator (v4 GPU)")
+    print("  multipath-passive-radar-sim — Batch Generator (v4 GPU)")
     print("="*52)
     print(f"  {args.trajectories} trajectories × {args.frames_per_traj} frames")
     print(f"  rays={args.rays:,}  seed={args.seed}  csv={args.out_csv}")

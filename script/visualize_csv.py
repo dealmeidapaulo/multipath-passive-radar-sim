@@ -48,7 +48,7 @@ def _ray_endpoint_from_observables(row):
 
 
 def main():
-    p = argparse.ArgumentParser(description="MarsupialRF — Visualise saved CSV")
+    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Visualise saved CSV")
     p.add_argument("csv",         type=str, help="Path to observables CSV")
     p.add_argument("--frame",     type=int, default=-1,
                    help="time_step to display (-1 = all frames, use slider)")
@@ -115,7 +115,7 @@ def main():
     axis = dict(showgrid=False, zeroline=False, showticklabels=False,
                 backgroundcolor=BG)
     fig = go.Figure(data=traces, layout=go.Layout(
-        title=dict(text=f"MarsupialRF — {pathlib.Path(args.csv).name}",
+        title=dict(text=f"multipath-passive-radar-sim — {pathlib.Path(args.csv).name}",
                    font=dict(color='white')),
         paper_bgcolor=BG, plot_bgcolor=BG,
         font=dict(color='white'),

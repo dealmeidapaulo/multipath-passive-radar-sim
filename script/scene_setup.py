@@ -107,7 +107,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("\n" + "="*56)
-    print("  MarsupialRF — Precomputed Scene Generator")
+    print("  multipath-passive-radar-sim — Precomputed Scene Generator")
     print("="*56)
     print(f"  n_rays    : {args.rays:,}")
     print(f"  cell_size : {args.cell_size}m")
