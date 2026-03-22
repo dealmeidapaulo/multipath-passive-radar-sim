@@ -1,26 +1,5 @@
 """
-script/demo_doppler.py
-=======================
-Demo 3 — Doppler sweep: estimación de velocidad del UAV.
-
-El UAV describe una trayectoria curva sobre la escena: empieza volando
-en +X (Doppler positivo), gira 180° y termina volando en −X (Doppler
-negativo). Los observables muestran la variación continua de f_D.
-
-La firma de Doppler bistático es:
-    f_D = (f_c / c) * (v · û_in + v · û_out)
-
-donde û_in y û_out son las direcciones unitarias TX→UAV y UAV→RX.
-El signo de f_D depende del ángulo entre la velocidad y la bisectriz
-del ángulo bistático.
-
-Muestra
--------
-  • Barrido de Doppler de +max a −max
-  • Cómo la posición afecta el valor de f_D
-  • CSV con columna f_D lista para análisis de velocidad
-
-Uso
+Usage
 ---
     python script/demo_doppler.py
     python script/demo_doppler.py --frames 10 --out_csv doppler_sweep.csv

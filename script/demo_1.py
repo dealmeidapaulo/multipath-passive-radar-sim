@@ -10,20 +10,6 @@ Geometry
   RX=(195, 50, 25) — radius 12m
   UAV flies along the corridor midline (y=50, z=25 ≡ TX-RX axis).
 
-Why this works
---------------
-  UAV starts at x=30 (close to TX → high power density → reliable hits)
-  and moves +5 m/frame toward RX. With 100k rays and no buildings
-  blocking the path, expected hits ≈ 3–6 per frame.
-  The bistatic Doppler changes sign as the UAV crosses the specular midpoint.
-
-What to observe
----------------
-  - UAV_bounces > 0 on most frames
-  - Doppler f_D changes sign around frame 8 (UAV crosses midpoint)
-  - power_dbm decreases as UAV moves away from TX
-  - Interactive figure: play the slider to watch the bounce trace move
-
 Usage
 -----
   python script/demo_bounces.py

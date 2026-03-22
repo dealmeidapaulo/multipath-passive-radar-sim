@@ -10,24 +10,6 @@ What this does
   bounce was detected above the noise floor.
   Output: a matplotlib heatmap showing "detectable" vs "shadow" zones.
 
-Why this is useful
-------------------
-  This is the key deliverable for TAMI7: given a fixed TX/RX geometry,
-  where in the urban airspace can the system detect a UAV?
-  The heatmap shows detection probability as a function of position.
-
-Geometry
---------
-  Domain 160×120×60 m, 4 buildings in a 2×2 grid pattern.
-  TX=(5, 60, 35)  RX=(155, 60, 20)  — diagonal baseline
-  Grid: x ∈ [20, 140] (6 pts), y ∈ [10, 110] (6 pts), z=35 m
-
-What to observe
----------------
-  - Cells near TX→RX LOS have the most bounces (high coverage)
-  - Cells behind buildings are "shadows" (0 bounces)
-  - The heatmap visualises the detection geometry
-
 Usage
 -----
   python script/demo_coverage.py

@@ -1,23 +1,5 @@
 """
-script/demo_occlusion.py
-=========================
-Demo 2 — Oclusión: el UAV bloquea caminos basales al cruzar la LOS.
-
-El UAV vuela PERPENDICULAR a la línea TX→RX y la cruza en el frame 3.
-Antes del cruce: todos los anchors visibles.
-Durante el cruce: anchors bloqueados (occ aumenta), bounces aparecen.
-Después del cruce: anchors vuelven a ser visibles.
-
-El efecto de "sombra acústica" del UAV es la firma de detección primaria
-en sistemas de radar pasivo donde no hay señal directa del UAV.
-
-Muestra
--------
-  • vis/occ cambia frame a frame
-  • UAV bounce aparece durante el cruce de LOS
-  • Efectos de la geometría urbana simple (cañón)
-
-Uso
+Usage
 ---
     python script/demo_occlusion.py
     python script/demo_occlusion.py --frames 7 --no_plot
