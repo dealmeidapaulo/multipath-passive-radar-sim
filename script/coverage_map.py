@@ -1,3 +1,16 @@
+"""
+Two-subplot coverage map from a precomputed StaticField.
+
+Left  — TX ray coverage: number of segments per spatial-hash cell
+         (shows where UAV spawns will have candidates).
+Right — Anchor power: max power_dbm of anchors passing through each XY cell
+         at a given height slice (shows best RX placement).
+
+Usage
+-----
+    python script/coverage_map.py
+    python script/coverage_map.py --height 35 --save coverage.png
+"""
 import sys, pathlib, argparse
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -49,7 +62,7 @@ def make_coverage_map(static, scene, height_m: float = 35.0):
 
 
 def main():
-    p = argparse.ArgumentParser(description="multipath-passive-radar-sim — Coverage maps")
+    p = argparse.ArgumentParser(description="Passive Radar Sim — Coverage maps")
     p.add_argument("--height",    type=float, default=35.,
                    help="Z height slice for the coverage maps (metres)")
     p.add_argument("--save",      type=str,   default="",
@@ -98,8 +111,8 @@ def main():
         bx = obs.box_min[0]; by = obs.box_min[1]
         bw = obs.box_max[0]-bx; bh = obs.box_max[1]-by
         axes[0].add_patch(plt.Rectangle((bx,by),bw,bh,
-                                         linewidth=0.5, edgecolor='#4499ff',
-                                         facecolor='none', alpha=0.5))
+                                         linewidth=1.5, edgecolor='#88bbff',
+                                         facecolor='none', alpha=0.85))
     axes[0].set_title(f'TX Ray Coverage  (z≈{args.height}m)', color='white')
     axes[0].set_xlabel('X (m)', color='white'); axes[0].set_ylabel('Y (m)', color='white')
     axes[0].legend(facecolor='#111', labelcolor='white', fontsize=9)
@@ -107,8 +120,10 @@ def main():
     # ── Right: anchor power ───────────────────────────────────────────────────
     pwr_disp = np.where(np.isfinite(pwr_map), pwr_map, np.nan)
     vmin = np.nanmin(pwr_disp) if np.any(np.isfinite(pwr_map)) else -100.
+    cmap_pwr = plt.cm.plasma.copy()
+    cmap_pwr.set_bad('#1a1a2a')   # NaN cells → dark navy, building outlines visible
     im1  = axes[1].imshow(pwr_disp.T, origin='lower', extent=extent,
-                           cmap='plasma', aspect='equal',
+                           cmap=cmap_pwr, aspect='equal',
                            vmin=vmin, vmax=np.nanmax(pwr_disp)+1)
     cb1 = fig.colorbar(im1, ax=axes[1])
     cb1.set_label('Max anchor power (dBm)', color='white')
@@ -122,12 +137,12 @@ def main():
         bx = obs.box_min[0]; by = obs.box_min[1]
         bw = obs.box_max[0]-bx; bh = obs.box_max[1]-by
         axes[1].add_patch(plt.Rectangle((bx,by),bw,bh,
-                                         linewidth=0.5, edgecolor='#4499ff',
-                                         facecolor='none', alpha=0.5))
+                                         linewidth=1.5, edgecolor='#88bbff',
+                                         facecolor='none', alpha=0.85))
     axes[1].set_title(f'Anchor Power Map  (z≈{args.height}m)', color='white')
     axes[1].set_xlabel('X (m)', color='white'); axes[1].set_ylabel('Y (m)', color='white')
 
-    plt.suptitle(f'multipath-passive-radar-sim Coverage Maps — {args.height}m slice', color='white', fontsize=13)
+    plt.suptitle(f'Passive Radar Sim Coverage Maps — {args.height}m slice', color='white', fontsize=13)
     plt.tight_layout()
 
     if args.save:

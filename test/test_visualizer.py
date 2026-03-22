@@ -90,7 +90,10 @@ print("  → PASS")
 
 # ── TEST 4: UAV-bounce hover template ─────────────────────────────────────────
 print(f"\n{CELL}\nTEST 4 — Hover templates: τ e f_D en UAV-bounce traces\n{CELL}")
-uav_traces = [t for t in fig.data
+# New visualiser uses Plotly frames (slider) — UAV bounce traces live in
+# fig.frames[n].data, not in fig.data (which is only the initial frame 0).
+all_traces = list(fig.data) + [t for fr in fig.frames for t in fr.data]
+uav_traces = [t for t in all_traces
               if isinstance(t, go.Scatter3d)
               and hasattr(t, 'hovertemplate')
               and t.hovertemplate
