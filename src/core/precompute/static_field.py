@@ -1,6 +1,6 @@
 from __future__ import annotations
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Set
 import numpy as np
 from src.core.scene.ray import Ray
@@ -10,21 +10,24 @@ from .hash import SpatialHash
 @dataclass
 class StaticField:
     """
-    Precomputed ray field (no UAV). All tensors on CPU.
+    Precomputed ray field (no UAV, no Rx filtering).
 
     SoA layout (N_rays innermost) matches GPU coalesced access.
 
-    pos_cpu      float32[N_max+2, N_rays, 3]  vertex positions
-    dir_cpu      float32[N_max+2, N_rays, 3]  direction at each vertex
-    step_powers  float32[N_max+2, N_rays]      power (dBm) at each vertex
-    n_pts_cpu    int32[N_rays]                 valid vertex count
-    reached_cpu  int32[N_rays]                 1 where ray reached RX
-    tx_ids_cpu   int32[N_rays]                 transmitter_id per ray
-    anchors      List[Ray]                     rays that reached RX (baseline)
-    anchor_ids   Set[int]                      global indices of anchors
-    spatial_hash SpatialHash
-    fc           float                         carrier frequency (Hz)
-    scene_ref    Scene
+    pos_cpu      float32[N_max+2, N_rays, 3]   vertex positions
+    dir_cpu      float32[N_max+2, N_rays, 3]   direction at each vertex
+    step_powers  float32[N_max+2, N_rays]       power (dBm) at each vertex
+    n_pts_cpu    int32[N_rays]                  valid vertex count per ray
+    reached_cpu  int32[N_rays]                  1 where ray reached Rx
+                                                (all zeros until apply_rx fills it)
+    tx_ids_cpu   int32[N_rays]                  transmitter_id per ray
+    anchors      List[Ray]                      rays that reached Rx
+                                                (empty until apply_rx fills it)
+    anchor_ids   Set[int]                       global indices of anchor rays
+                                                (empty until apply_rx fills it)
+    spatial_hash SpatialHash                    segment–cell index
+    fc           float                          carrier frequency (Hz)
+    scene_ref    Scene                          back-reference (no Rx)
     """
     pos_cpu     : np.ndarray
     dir_cpu     : np.ndarray
@@ -37,6 +40,7 @@ class StaticField:
     spatial_hash: SpatialHash
     fc          : float
     scene_ref   : object
+    rx_ref      : object = None    # Receiver — set by apply_rx()
 
 
 def fibonacci_dirs(n: int) -> np.ndarray:

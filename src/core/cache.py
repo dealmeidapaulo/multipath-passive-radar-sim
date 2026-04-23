@@ -42,6 +42,7 @@ def _scene_params(scene, seed: int, cell_size: float) -> dict:
              "power_w": round(float(tx.tx_power_w), 6),
              "tx_id": int(tx.tx_id)}
             for tx in scene.transmitters]
+
     obs = sorted([[round(float(v), 4) for v in list(o.box_min) + list(o.box_max)]
                   for o in scene.obstacles])
     return {
@@ -49,14 +50,11 @@ def _scene_params(scene, seed: int, cell_size: float) -> dict:
         "cell_size": round(float(cell_size), 6),
         "n_rays": int(scene.n_rays),
         "n_max": int(scene.n_max),
-        "roughness": round(float(scene.roughness), 8),
         "use_physics": bool(scene.use_physics),
         "temperature_c": round(float(scene.temperature_c), 4),
         "bandwidth_hz": round(float(scene.bandwidth_hz), 2),
         "box_min": [round(float(x), 4) for x in scene.box.box_min],
         "box_max": [round(float(x), 4) for x in scene.box.box_max],
-        "rx_pos": [round(float(x), 6) for x in scene.receiver.position],
-        "rx_radius": round(float(scene.receiver.radius), 6),
         "transmitters": txs,
         "obstacles": obs,
         "kernel_version": KERNEL_VERSION,
@@ -196,8 +194,7 @@ def get_or_compute(
     verbose     : print cache hit/miss info
     **precompute_kwargs : forwarded to precompute() (e.g. batch_size)
     """
-    uav_rad  = float(scene.uav.radius) if scene.uav is not None else 1.0
-    cs       = cell_size if cell_size is not None else max(1.0, uav_rad)
+    cs       = cell_size if cell_size is not None else 1.0
     cdir     = Path(cache_dir) if cache_dir is not None else _DEFAULT_CACHE
     fields_dir = cdir / "precomputed_static_fields"
     fields_dir.mkdir(parents=True, exist_ok=True)
