@@ -1,262 +1,140 @@
 """
 benchmark/bench_obstacle_count.py
 ===================================
-Measures precompute wall-clock time as a function of obstacle count.
-
-Starting from a fixed set of base obstacles, each obstacle is progressively
-subdivided along its longest axis into k equal pieces (split factor k).
-Total building volume stays constant; only N_obs grows.
-
-This isolates the cost of the inner per-obstacle loop inside trace_all_kernel
-(O(N_rays × N_max × N_obs) intersection tests) from geometry changes.
-
-Scene (fixed)
--------------
-  Domain    : 200 x 200 x 100 m
-  TX        : (0, 0, 80) — 500 W — 700 MHz
-  RX        : (100, 100, 20) — radius 10 m
-  n_rays    : 100,000 (fixed)
-  Roughness : 0.0
-
-Base obstacles (5 walls)
-------------------------
-  Four perimeter walls + one central divider, placed away from the TX.
-  Each wall is subdivided k times along its longest axis, yielding
-  N_obs = 5 × k obstacles with identical total volume.
-
-Usage
------
-  python benchmark/bench_obstacle_count.py
-  python benchmark/bench_obstacle_count.py --reps 5 --output-dir /tmp/results
+Analyzes precompute performance by varying the number of obstacles.
+Uses a representative "Enclosed Room" geometry with a central divider.
 """
 
-from __future__ import annotations
-
-import argparse
-import json
-import platform
-import subprocess
 import sys
+import json
 import time
-from datetime import datetime, timezone
+import subprocess
 from pathlib import Path
-from typing import Any
-
+from datetime import datetime
 import numpy as np
 
-# ── Repository root ────────────────────────────────────────────────────────────
-_HERE = Path(__file__).resolve().parent
-_ROOT = _HERE.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+# Add repository root to sys.path
+HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.scene.domain import Box, Obstacle, Receiver, Scene, Transmitter
+from src.core.scene.domain import Scene
+from src.core.scene.domain import Transmitter
+from src.core.scene.domain import Receiver
+from src.core.scene.domain import Box
+from src.core.scene.domain import Obstacle
 from src.core.precompute.precompute import precompute
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
-#  Split factors: N_obs = N_BASE_WALLS × k
-SPLIT_FACTORS = [1, 2, 5, 10, 25, 50, 100, 200, 400]
-N_RAYS        = 100_000
-N_REPS        = 25
-MAX_BOUNCES   = 8
-CELL_SIZE     = 5.0
-RESULTS_DIR   = _HERE / "results"
+# --- Configuration ------------------------------------------------------------
+N_RAYS = 250_000
+N_REPS = 5
+SPLIT_FACTORS = [1, 5, 10, 25, 50, 100, 200]
+RESULTS_DIR = HERE / "results"
 
-# Five base walls (bmin, bmax).  Placed at x > 100 m so they don't sit
-# directly on the TX–RX baseline, keeping anchor count interpretable.
-_BASE_WALLS: list[tuple[list[float], list[float]]] = [
-    ([110.0,  2.0, 0.0], [190.0,  8.0, 30.0]),   # south wall
-    ([110.0, 92.0, 0.0], [190.0, 98.0, 30.0]),   # north wall
-    ([110.0,  8.0, 0.0], [116.0, 92.0, 30.0]),   # west wall
-    ([184.0,  8.0, 0.0], [190.0, 92.0, 30.0]),   # east wall
-    ([148.0,  8.0, 0.0], [152.0, 92.0, 25.0]),   # central divider
+# Representative Layout: 100x100 domain, central wall between TX and RX
+BASE_WALLS = [
+    ((0.0, 0.0, 0.0), (100.0, 2.0, 50.0)),    # Bottom Wall
+    ((0.0, 98.0, 0.0), (100.0, 100.0, 50.0)), # Top Wall
+    ((0.0, 2.0, 0.0), (2.0, 98.0, 50.0)),     # Left Wall
+    ((98.0, 2.0, 0.0), (100.0, 98.0, 50.0)),  # Right Wall
+    ((49.0, 2.0, 0.0), (51.0, 98.0, 40.0)),   # Center Divider
 ]
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Scene
-# ══════════════════════════════════════════════════════════════════════════════
-
-def subdivide(bmin: list[float], bmax: list[float], k: int) -> list[Obstacle]:
-    """
-    Split one AABB into k equal pieces along its longest axis.
-    Returns a list of k Obstacle objects with the same total volume.
-    """
-    dims   = [bmax[i] - bmin[i] for i in range(3)]
-    axis   = int(np.argmax(dims))
-    step   = dims[axis] / k
-    pieces = []
-    for i in range(k):
-        lo = list(bmin); hi = list(bmax)
-        lo[axis] = bmin[axis] + i * step
-        hi[axis] = bmin[axis] + (i + 1) * step
-        pieces.append(Obstacle(box_min=np.array(lo), box_max=np.array(hi)))
-    return pieces
-
-
-def build_obstacles(k: int) -> list[Obstacle]:
-    """Return 5 × k obstacles from the base walls, each split k times."""
-    obs = []
-    for bmin, bmax in _BASE_WALLS:
-        obs.extend(subdivide(bmin, bmax, k))
-    return obs
-
-
-def build_scene(k: int) -> Scene:
-    scene = Scene(
-        box          = Box(np.zeros(3), np.array([200., 200., 100.])),
-        transmitters = [Transmitter(
-                            position   = np.array([0., 0., 80.]),
-                            frequency  = 700e6,
-                            tx_power_w = 500.0,
-                            tx_id      = 0,
-                        )],
-        receiver     = Receiver(position=np.array([100., 100., 20.]), radius=10.0),
-        obstacles    = build_obstacles(k),
-        n_rays       = N_RAYS,
-        n_max        = MAX_BOUNCES,
-    )
-    scene.roughness     = 0.0
-    scene.use_physics   = True
-    scene.bandwidth_hz  = 20e6
-    scene.temperature_c = 20.0
-    return scene
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# System info
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _gpu_info() -> str:
+def get_gpu_name() -> str:
     try:
         out = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=name,memory.total,driver_version",
-             "--format=csv,noheader"],
-            encoding="utf-8", stderr=subprocess.DEVNULL,
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            encoding="utf-8"
         )
         return out.strip().split("\n")[0]
     except Exception:
-        return "unavailable"
+        return "Unknown_GPU"
 
+def generate_subdivided_walls(splits: int):
+    obstacles = []
+    for bmin, bmax in BASE_WALLS:
+        dims = [bmax[i] - bmin[i] for i in range(3)]
+        axis = np.argmax(dims) # Split along longest dimension
+        step = dims[axis] / splits
+        for i in range(splits):
+            m_min, m_max = list(bmin), list(bmax)
+            m_min[axis] = bmin[axis] + i * step
+            m_max[axis] = bmin[axis] + (i + 1) * step
+            obstacles.append(Obstacle(box_min=m_min, box_max=m_max))
+    return obstacles
 
-def system_info() -> dict[str, Any]:
+def run_benchmark() -> dict:
+    """Executes the benchmark and returns a results dictionary."""
+    gpu_name = get_gpu_name()
+    timestamp = datetime.now().astimezone().isoformat()
+    
+    box = Box(box_min=[0, 0, 0], box_max=[100, 100, 50])
+    tx = Transmitter(tx_id=1, position=[75, 50, 20], tx_power_dbm=57.0, frequency=700e6)
+    rx = Receiver(position=[25, 50, 20], radius=5.0)
+    
+    scene = Scene(box=box, transmitters=[tx], receiver=rx, obstacles=[])
+    scene.n_rays = N_RAYS
+    scene.n_max = 4
+    for obs in scene.obstacles: obs.roughness = 0.0
+
+    # JIT Warmup
+    scene.obstacles = generate_subdivided_walls(1)
+    precompute(scene, seed=42)
+
+    results_data = []
+    for s in SPLIT_FACTORS:
+        scene.obstacles = generate_subdivided_walls(s)
+        n_obs = len(scene.obstacles)
+        times = []
+        anchors = 0
+        
+        for _ in range(N_REPS):
+            t0 = time.time()
+            static = precompute(scene, seed=42)
+            t1 = time.time()
+            times.append((t1 - t0) * 1000.0)
+            if _ == 0:
+                anchors = len(static.anchors)
+                
+        results_data.append({
+            "n_obs": int(n_obs),
+            "splits": int(s),
+            "times_ms": [round(t, 3) for t in times],
+            "median_ms": round(float(np.median(times)), 3),
+            "anchors": int(anchors)
+        })
+
     return {
-        "python"  : platform.python_version(),
-        "platform": platform.platform(),
-        "cpu"     : platform.processor() or platform.machine(),
-        "gpu"     : _gpu_info(),
-    }
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Benchmark
-# ══════════════════════════════════════════════════════════════════════════════
-
-def warmup() -> None:
-    """Trigger Numba JIT compilation before timing begins."""
-    precompute(build_scene(k=1), seed=0, cell_size=CELL_SIZE)
-
-
-def measure_one(k: int, n_reps: int, seed: int = 42) -> dict[str, Any]:
-    """
-    Run precompute n_reps times for a given split factor k.
-    Returns a result record with timing statistics, obstacle count, and anchors.
-    """
-    scene   = build_scene(k)
-    n_obs   = len(scene.obstacles)
-    times: list[float] = []
-    n_anchors: int = 0
-
-    for rep in range(n_reps):
-        t0    = time.perf_counter()
-        field = precompute(scene, seed=seed + rep, cell_size=CELL_SIZE)
-        times.append(time.perf_counter() - t0)
-        if rep == 0:
-            n_anchors = len(field.anchors)
-
-    times_ms = [round(t * 1e3, 3) for t in times]
-    return {
-        "split_factor": k,
-        "n_obs"       : n_obs,
-        "n_anchors"   : n_anchors,
-        "median_ms"   : round(float(np.median(times_ms)), 3),
-        "mean_ms"     : round(float(np.mean(times_ms)),   3),
-        "std_ms"      : round(float(np.std(times_ms)),    3),
-        "min_ms"      : round(float(np.min(times_ms)),    3),
-        "max_ms"      : round(float(np.max(times_ms)),    3),
-        "times_ms"    : times_ms,
-    }
-
-
-def run(split_factors: list[int], n_reps: int) -> list[dict[str, Any]]:
-    print("warmup (split=1) ...", flush=True)
-    warmup()
-
-    results = []
-    for k in split_factors:
-        rec = measure_one(k, n_reps)
-        results.append(rec)
-        print(
-            f"  split={rec['split_factor']:>4}  "
-            f"n_obs={rec['n_obs']:>5}  "
-            f"median={rec['median_ms']:>8.1f} ms  "
-            f"anchors={rec['n_anchors']:>5}",
-            flush=True,
-        )
-    return results
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Output
-# ══════════════════════════════════════════════════════════════════════════════
-
-def save(results: list[dict], output_dir: Path, n_reps: int) -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-
-    payload = {
         "metadata": {
-            "benchmark"     : "bench_obstacle_count",
-            "timestamp_utc" : datetime.now(timezone.utc).isoformat(),
-            "n_reps"        : n_reps,
-            "max_bounces"   : MAX_BOUNCES,
-            "cell_size_m"   : CELL_SIZE,
-            "scene": {
-                "domain_m"         : [200, 200, 100],
-                "tx_position"      : [0, 0, 80],
-                "tx_power_w"       : 500,
-                "tx_freq_hz"       : 700e6,
-                "rx_position"      : [100, 100, 20],
-                "rx_radius_m"      : 10,
-                "fixed_n_rays"     : N_RAYS,
-                "roughness"        : 0.0,
-                "n_base_walls"     : len(_BASE_WALLS),
-                "subdivision_axis" : "longest",
-                "note"             : "N_obs = n_base_walls × split_factor; total volume constant",
-            },
-            "system": system_info(),
+            "benchmark": "bench_obstacle_count",
+            "date": timestamp,
+            "gpu": gpu_name,
+            "fixed_n_rays": N_RAYS,
+            "bounces_max": scene.n_max
         },
-        "results": results,
+        "results": results_data
     }
 
-    path = output_dir / f"bench_obstacle_count_{stamp}.json"
-    path.write_text(json.dumps(payload, indent=2))
-    return path
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Entry point
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Benchmark: precompute time vs obstacle count")
-    p.add_argument("--reps",       type=int,  default=N_REPS)
-    p.add_argument("--output-dir", type=Path, default=RESULTS_DIR)
-    return p.parse_args()
-
+def print_report(summary: dict, filepath: Path):
+    m = summary["metadata"]
+    print("\nBENCHMARK REPORT: OBSTACLE COUNT SCALING")
+    print(f"Device: {m['gpu']}")
+    print(f"Rays  : {m['fixed_n_rays']:,} | Bounces: {m['bounces_max']}")
+    print("-" * 80)
+    print(f"{'N_obs':>8} | {'Splits':>8} | {'Median (ms)':>12} | {'Range [Min - Max] (ms)':>25} | {'Anchors':>8}")
+    print("-" * 80)
+    for r in summary["results"]:
+        med = f"{r['median_ms']:.2f}"
+        rng = f"[{min(r['times_ms']):.1f} - {max(r['times_ms']):.1f}]"
+        print(f"{r['n_obs']:>8} | {r['splits']:>8} | {med:>12} | {rng:>25} | {r['anchors']:>8}")
+    print("-" * 80)
+    print(f"Output: {filepath}\n")
 
 if __name__ == "__main__":
-    args    = _parse_args()
-    results = run(SPLIT_FACTORS, args.reps)
-    path    = save(results, args.output_dir, args.reps)
-    print(f"saved → {path}")
+    RESULTS_DIR.mkdir(exist_ok=True)
+    data = run_benchmark()
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    path = RESULTS_DIR / f"bench_obs_count_{ts}.json"
+    path.write_text(json.dumps(data, indent=2))
+    print_report(data, path)

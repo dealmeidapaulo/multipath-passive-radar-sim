@@ -24,6 +24,31 @@ class Obstacle:
         self.box_min = np.asarray(self.box_min, dtype=float)
         self.box_max = np.asarray(self.box_max, dtype=float)
 
+
+
+@dataclass
+class MeshObstacle:
+    vertices : np.ndarray
+    faces    : np.ndarray
+    roughness: float = 0.0
+    material : str   = "concrete"
+
+    def __post_init__(self):
+        self.vertices = np.asarray(self.vertices, dtype=np.float64)
+        self.faces    = np.asarray(self.faces,    dtype=np.int32)
+
+    @property
+    def box_min(self) -> np.ndarray:
+        return self.vertices.min(axis=0)
+
+    @property
+    def box_max(self) -> np.ndarray:
+        return self.vertices.max(axis=0)
+
+
+# Union type alias for type hints
+AnyObstacle = Obstacle | MeshObstacle
+
 @dataclass
 class Transmitter:
     position  : np.ndarray
