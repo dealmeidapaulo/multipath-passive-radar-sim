@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, Callable
 import numpy as np
 
 try:
@@ -18,10 +18,11 @@ from .hash         import build_spatial_hash
 
 def precompute(
     scene,
-    seed             : Optional[int]   = None,
-    batch_size       : int             = 0,
-    threads_per_block: int             = 256,
-    cell_size        : Optional[float] = None,
+    seed            : Optional[int] = None,
+    batch_size      : int           = 0,
+    threads_per_block: int          = 256,
+    cell_size       : Optional[float] = None,
+    ray_dirs_fn     : Callable[[int], np.ndarray] = fibonacci_dirs,
 ) -> StaticField:
     """
     Trace scene without UAV or Rx; build spatial hash.
@@ -65,7 +66,7 @@ def precompute(
     for tx in scene.transmitters:
         tx_pos_np = np.asarray(tx.position, dtype=np.float32)
         init_pwr  = np.float32(tx.tx_power_dbm)
-        dirs      = fibonacci_dirs(scene.n_rays)
+        dirs = ray_dirs_fn(scene.n_rays)
         N_rays    = dirs.shape[0]
         _bs       = N_rays if batch_size <= 0 else batch_size
 
