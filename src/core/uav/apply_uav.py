@@ -12,7 +12,7 @@ from src.core.scene.propagation import (compute_sphere_rcs_bounce_gain,
                                         compute_scattered_doppler)
 
 from src.core.gpu.kernels import mini_trace_kernel
-from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array
+from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array, obs_eps_array
 
 
 def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
@@ -170,9 +170,13 @@ def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
 
         obs_min_np, obs_max_np = obs_arrays(scene_ref.obstacles)
         obs_rough_np = obs_roughness_array(scene_ref.obstacles)
+        obs_eps_np = obs_eps_array(scene_ref.obstacles)
+
         obs_min_g    = _cuda.to_device(obs_min_np)
         obs_max_g    = _cuda.to_device(obs_max_np)
         obs_rough_g  = _cuda.to_device(obs_rough_np)
+        obs_eps_g  = _cuda.to_device(obs_eps_np)
+        
         bmin_g    = _cuda.to_device(np.asarray(scene_ref.box.box_min, dtype=np.float32))
         bmax_g    = _cuda.to_device(np.asarray(scene_ref.box.box_max, dtype=np.float32))
         rx_pos_g  = _cuda.to_device(rx_pos.astype(np.float32))
@@ -187,7 +191,7 @@ def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
         mini_trace_kernel[BPG, TPB](
             rch_g, pwr_g, adir_g, sdir_g, pos_g, npts_g,
             hit_pts_g, v_in_g, n_uav_g, powers_g,
-            obs_min_g, obs_max_g, obs_rough_g, rx_pos_g, bmin_g, bmax_g,
+            obs_min_g, obs_max_g, obs_rough_g, obs_eps_g, rx_pos_g, bmin_g, bmax_g,
             np.float32(rx_rad), np.int32(n_post), np.float32(noise_f),
             np.float32(uav_rough),
             np.int32(n_samp), np.float32(fc_c), np.int32(42),
