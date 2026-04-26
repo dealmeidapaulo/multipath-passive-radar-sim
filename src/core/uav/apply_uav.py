@@ -14,8 +14,7 @@ from src.core.scene.ray         import Ray
 from src.core.scene.propagation import (compute_sphere_rcs_bounce_gain,
                                         compute_scattered_doppler)
 from src.core.gpu.kernels        import _HAS_CUDA
-if _HAS_CUDA:
-    from src.core.gpu.kernels import mini_trace_kernel
+from src.core.gpu.kernels import mini_trace_kernel
 from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array
 
 

@@ -8,9 +8,7 @@ try:
 except ImportError:
     _HAS_CUDA = False; _cuda = None
 
-from src.core.gpu.kernels import _HAS_CUDA
-if _HAS_CUDA:
-    from src.core.gpu.kernels import trace_all_kernel
+from src.core.gpu.kernels import trace_all_kernel
 from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array, obs_eps_array
 from .static_field import StaticField, fibonacci_dirs
 from .hash         import build_spatial_hash

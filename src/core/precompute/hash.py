@@ -11,9 +11,7 @@ except ImportError:
     _HAS_CUDA = False
     cuda = None
 
-from src.core.gpu.kernels import _HAS_CUDA
-if _HAS_CUDA:
-    from src.core.gpu.spatial_hash_kernels import count_kernel, fill_kernel
+from src.core.gpu.spatial_hash_kernels import count_kernel, fill_kernel
 
 
 @dataclass
