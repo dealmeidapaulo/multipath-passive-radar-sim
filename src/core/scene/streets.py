@@ -48,7 +48,7 @@ def make_street_grid(
                     box_min  = np.array([x,         y,         0.0]),
                     box_max  = np.array([x+block_w, y+block_d, h  ]),
                     roughness= roughness,
-                    material = "brick",
+                    material = "concrete",
                 ))
             y += step_y
         x += step_x

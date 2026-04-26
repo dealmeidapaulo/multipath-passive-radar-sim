@@ -108,6 +108,8 @@ def _perturb_normal(nx, ny, nz, roughness, r1, r2):
     tx = by*nz - bz*ny; ty = bz*nx - bx*nz; tz = bx*ny - by*nx
     phi = 2.0 * math.pi * r1
     theta = roughness * math.sqrt(-2.0 * math.log(max(r2, 1e-10)))
+    if theta > 1.5533:   # ~π/2 × 0.99
+        theta = 1.5533
     sin_t = math.sin(theta); cos_t = math.cos(theta)
     nx_p = cos_t*nx + sin_t*(math.cos(phi)*tx + math.sin(phi)*bx)
     ny_p = cos_t*ny + sin_t*(math.cos(phi)*ty + math.sin(phi)*by)

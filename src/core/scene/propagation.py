@@ -1,20 +1,5 @@
 import numpy as np
 
-def compute_fspl(distance_m: float, frequency_hz: float) -> float:
-    """Free Space Path Loss in dB."""
-    c = 3e8
-    if distance_m < 1e-9:
-        return 0.0
-    return 20.0 * np.log10(distance_m) + 20.0 * np.log10(frequency_hz) + 20.0 * np.log10(4 * np.pi / c)
-
-def sample_reflection_attenuation(base_factor: float = 0.1, std_dev: float = 0.03) -> float:
-    """
-    Samples an amplitude reduction factor from a normal distribution.
-    Returns the equivalent power change in dB (will be a negative value).
-    """
-    val = np.random.normal(loc=base_factor, scale=std_dev)
-    val = float(np.clip(val, 1e-6, 1.0))
-    return 10.0 * np.log10(val)
 
 def compute_sphere_rcs_bounce_gain(radius: float, frequency_hz: float) -> float:
     """

@@ -59,11 +59,6 @@ def obs_roughness_array(obstacles) -> np.ndarray:
     )
 
 
-def obs_material_array(obstacles) -> np.ndarray:
-    return np.array(
-        [MATERIAL_MAP.get(o.material, 0) for o in obstacles],
-        dtype=np.int32,
-    )
 
 
 def obs_eps_array(obstacles) -> np.ndarray:

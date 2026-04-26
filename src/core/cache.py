@@ -30,8 +30,6 @@ from .precompute.static_field import StaticField
 from .precompute.hash         import SpatialHash
 from .precompute.precompute   import precompute
 
-KERNEL_VERSION = "v3.1"   # bump when kernel physics changes
-
 
 # ── Hash ─────────────────────────────────────────────────────────────────────
 
@@ -43,8 +41,16 @@ def _scene_params(scene, seed: int, cell_size: float) -> dict:
              "tx_id": int(tx.tx_id)}
             for tx in scene.transmitters]
 
-    obs = sorted([[round(float(v), 4) for v in list(o.box_min) + list(o.box_max)]
-                  for o in scene.obstacles])
+    obs = sorted([
+    (
+        tuple(round(x, 4) for x in o.box_min),
+        tuple(round(x, 4) for x in o.box_max),
+        round(getattr(o, "roughness", 0.0), 6),
+        str(getattr(o, "material", "concrete"))
+    )
+        for o in scene.obstacles
+    ])
+    
     return {
         "seed": int(seed),
         "cell_size": round(float(cell_size), 6),
@@ -56,8 +62,7 @@ def _scene_params(scene, seed: int, cell_size: float) -> dict:
         "box_min": [round(float(x), 4) for x in scene.box.box_min],
         "box_max": [round(float(x), 4) for x in scene.box.box_max],
         "transmitters": txs,
-        "obstacles": obs,
-        "kernel_version": KERNEL_VERSION,
+        "obstacles": obs
     }
 
 
@@ -88,7 +93,7 @@ def _save_registry(cache_dir: Path, entries: List[dict]) -> None:
 
 def _find_entry(entries: List[dict], h: str) -> Optional[dict]:
     for e in entries:
-        if e.get("hash") == h and e.get("kernel_version") == KERNEL_VERSION:
+        if e.get("hash") == h:
             return e
     return None
 
@@ -229,7 +234,6 @@ def get_or_compute(
     new_entry = {
         "hash"              : h,
         "filename"          : fname,
-        "kernel_version"    : KERNEL_VERSION,
         "precompute_time_s" : round(elapsed, 2),
         "created_at"        : datetime.now(timezone.utc).isoformat(),
         "params_summary"    : {
