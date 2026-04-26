@@ -2,12 +2,8 @@ from __future__ import annotations
 import math
 import numpy as np
 
-try:
-    from numba import cuda
-    _HAS_CUDA = True
-except ImportError:
-    _HAS_CUDA = False
-    cuda = None  # type: ignore
+from numba import cuda
+
 
 
 MATERIAL_MAP = {

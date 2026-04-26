@@ -4,16 +4,13 @@ from typing import List, Set, Tuple
 
 import numpy as np
 
-try:
-    from numba import cuda as _cuda
-    _HAS_CUDA = True
-except ImportError:
-    _HAS_CUDA = False; _cuda = None
+from numba import cuda as _cuda
+
 
 from src.core.scene.ray         import Ray
 from src.core.scene.propagation import (compute_sphere_rcs_bounce_gain,
                                         compute_scattered_doppler)
-from src.core.gpu.kernels        import _HAS_CUDA
+
 from src.core.gpu.kernels import mini_trace_kernel
 from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array
 
@@ -160,7 +157,7 @@ def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
     # ── 5. GPU batch mini-trace ───────────────────────────────────────────────
     uav_bounces: List[Ray] = []
 
-    if hit_pts_list and _HAS_CUDA:
+    if hit_pts_list:
         N_hits  = len(hit_pts_list)
         N_total = N_hits * n_samp
         TPB     = 256

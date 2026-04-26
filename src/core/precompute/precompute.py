@@ -2,11 +2,8 @@ from __future__ import annotations
 from typing import List, Optional, Callable
 import numpy as np
 
-try:
-    from numba import cuda as _cuda
-    _HAS_CUDA = True
-except ImportError:
-    _HAS_CUDA = False; _cuda = None
+from numba import cuda as _cuda
+
 
 from src.core.gpu.kernels import trace_all_kernel
 from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array, obs_eps_array
@@ -37,8 +34,7 @@ def precompute(
     StaticField with reached_cpu=zeros, anchors=[], anchor_ids=set().
     Call apply_rx(static, rx) to populate those fields.
     """
-    if not _HAS_CUDA:
-        raise RuntimeError("Numba CUDA not available")
+
     if seed is not None:
         np.random.seed(seed)
     seed_val = int(seed) if seed is not None else 0

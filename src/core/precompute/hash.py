@@ -4,12 +4,8 @@ from dataclasses import dataclass
 from typing import List, Set, Tuple
 import numpy as np
 
-try:
-    from numba import cuda
-    _HAS_CUDA = True
-except ImportError:
-    _HAS_CUDA = False
-    cuda = None
+from numba import cuda
+
 
 from src.core.gpu.spatial_hash_kernels import count_kernel, fill_kernel
 
@@ -59,9 +55,8 @@ class SpatialHash:
 def build_spatial_hash(pos_cpu: np.ndarray, n_pts_cpu: np.ndarray,
                        box_min: np.ndarray, box_max: np.ndarray,
                        cell_size: float, threads_per_block: int = 256) -> SpatialHash:
-    """Two-pass GPU build: count then fill. Returns SpatialHash (all CPU)."""
-    if not _HAS_CUDA:
-        raise RuntimeError("Numba CUDA not available")
+
+
     N_rays  = int(pos_cpu.shape[1])
     box_min = np.asarray(box_min, dtype=np.float32)
     box_max = np.asarray(box_max, dtype=np.float32)
