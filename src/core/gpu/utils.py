@@ -68,3 +68,13 @@ def obs_material_array(obstacles) -> np.ndarray:
         [MATERIAL_MAP.get(o.material, 0) for o in obstacles],
         dtype=np.int32,
     )
+
+
+def obs_eps_array(obstacles) -> np.ndarray:
+    return np.array(
+        [
+            EPSILON_TABLE[MATERIAL_MAP.get(o.material, 0)]
+            for o in obstacles
+        ],
+        dtype=np.float32,
+    )

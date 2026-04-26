@@ -11,7 +11,7 @@ except ImportError:
 from src.core.gpu.kernels import _HAS_CUDA
 if _HAS_CUDA:
     from src.core.gpu.kernels import trace_all_kernel
-from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array
+from src.core.gpu.utils import fspl_const, obs_arrays, obs_roughness_array, obs_eps_array
 from .static_field import StaticField, fibonacci_dirs
 from .hash         import build_spatial_hash
 
@@ -54,6 +54,7 @@ def precompute(
 
     obs_min_np, obs_max_np = obs_arrays(scene.obstacles)
     obs_rough_np           = obs_roughness_array(scene.obstacles)
+    obs_eps_np = obs_eps_array(scene.obstacles)    
     box_min_np = np.asarray(scene.box.box_min, dtype=np.float32)
     box_max_np = np.asarray(scene.box.box_max, dtype=np.float32)
 
@@ -94,6 +95,7 @@ def precompute(
                 _cuda.to_device(tx_pos_np),
                 _cuda.to_device(obs_min_np), _cuda.to_device(obs_max_np),
                 _cuda.to_device(obs_rough_np),
+                _cuda.to_device(obs_eps_np),
                 _cuda.to_device(box_min_np), _cuda.to_device(box_max_np),
                 np.int32(n_max), init_pwr,
                 np.float32(noise_floor), fc_c, seed_off,
