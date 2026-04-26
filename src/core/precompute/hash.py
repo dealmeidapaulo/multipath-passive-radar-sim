@@ -13,7 +13,7 @@ except ImportError:
 
 from src.core.gpu.kernels import _HAS_CUDA
 if _HAS_CUDA:
-    from src.core.gpu.kernels import _count_kernel, _fill_kernel
+    from src.core.gpu.spatial_hash_kernels import count_kernel, fill_kernel
 
 
 @dataclass
@@ -78,7 +78,7 @@ def build_spatial_hash(pos_cpu: np.ndarray, n_pts_cpu: np.ndarray,
     bmin_gpu   = cuda.to_device(box_min)
     counts_gpu = cuda.to_device(np.zeros(N_cells, dtype=np.int32))
 
-    _count_kernel[bpg, threads_per_block](pos_gpu, npts_gpu, counts_gpu, cs_inv, bmin_gpu, NX, NY, NZ)
+    count_kernel[bpg, threads_per_block](pos_gpu, npts_gpu, counts_gpu, cs_inv, bmin_gpu, NX, NY, NZ)
     cuda.synchronize()
 
     counts_cpu = counts_gpu.copy_to_host()
@@ -94,7 +94,7 @@ def build_spatial_hash(pos_cpu: np.ndarray, n_pts_cpu: np.ndarray,
     flat_rays_gpu = cuda.to_device(np.zeros(total, dtype=np.int32))
     flat_segs_gpu = cuda.to_device(np.zeros(total, dtype=np.int32))
 
-    _fill_kernel[bpg, threads_per_block](
+    fill_kernel[bpg, threads_per_block](
         pos_gpu, npts_gpu, fill_ptr_gpu, flat_rays_gpu, flat_segs_gpu,
         cs_inv, bmin_gpu, NX, NY, NZ)
     cuda.synchronize()

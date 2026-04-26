@@ -10,6 +10,22 @@ except ImportError:
     cuda = None  # type: ignore
 
 
+MATERIAL_MAP = {
+    "concrete": 0,
+    "glass": 1,
+    "metal": 2,
+    "wood": 3,
+}
+
+EPSILON_TABLE = np.array([
+    7.0,   # concrete
+    5.0,   # glass
+    1e6,   # metal (aprox conductor)
+    2.5,   # wood
+], dtype=np.float32)
+
+
+
 def fspl_const(fc: float) -> float:
     """
     Frequency-dependent FSPL term (dB): 20·log10(fc) + 20·log10(4π/c).
@@ -44,4 +60,11 @@ def obs_roughness_array(obstacles) -> np.ndarray:
     return np.array(
         [float(getattr(o, "roughness", 0.0)) for o in obstacles],
         dtype=np.float32,
+    )
+
+
+def obs_material_array(obstacles) -> np.ndarray:
+    return np.array(
+        [MATERIAL_MAP.get(o.material, 0) for o in obstacles],
+        dtype=np.int32,
     )
