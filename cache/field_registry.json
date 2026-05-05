@@ -1,0 +1,23 @@
+[
+  {
+    "hash": "f2089dfd7fa122db",
+    "filename": "sf_f2089dfd7fa122db.npz",
+    "scene_filename": "sc_f2089dfd7fa122db.json",
+    "precompute_time_s": 5.91,
+    "created_at": "2026-05-05T01:56:39.083771+00:00",
+    "params_summary": {
+      "n_rays": 30000,
+      "n_max": 4,
+      "seed": 42,
+      "cell_size": 25.0,
+      "domain": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "n_transmitters": 1,
+      "n_obstacles": 6,
+      "anchors": 0
+    }
+  }
+]
