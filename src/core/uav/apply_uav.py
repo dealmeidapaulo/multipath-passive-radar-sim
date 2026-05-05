@@ -22,16 +22,6 @@ def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
     static must have been processed by apply_rx() first so that
     static.anchors and static.anchor_ids are populated.
 
-    Steps
-    -----
-    1. Spatial hash query → candidate (ray_id, seg_id) pairs near UAV.
-    2. Vectorised sphere-hit filter (NumPy) → confirmed hits + blocked ray ids.
-    3. Noise-floor filter (vectorised).
-    4. Small Python loop over confirmed hits (≤ ~20) to build path prefixes.
-    5. GPU batch: mini_trace_kernel traces all (N_hits × n_samples) post-UAV
-       rays in one launch.
-    6. Assemble Ray objects; split anchors into visible / occluded.
-
     Returns
     -------
     anchors_vis  : visible baseline paths
@@ -221,7 +211,7 @@ def apply_uav(static, uav, scene) -> Tuple[List[Ray], List[Ray], List[Ray]]:
             d_sample = sdir_cpu[tid].astype(np.float64)
             doppler  = compute_scattered_doppler(uav_vel, v_in_f64_list[hit_id], d_sample, fc)
 
-            all_pts = pre_pts_list[hit_id] + post[1:]
+            all_pts = pre_pts_list[hit_id] + [rx_pos.copy()]
             r = Ray(transmitter_id=0, points=all_pts,
                     arrival_dir=arr_dir, frequency=float(fc), power_dbm=fin_pwr)
             r.is_uav_bounce = True; r.doppler_shift = doppler; r.visible = True
