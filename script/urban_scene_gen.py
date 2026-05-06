@@ -22,18 +22,23 @@ from src.core.scene.domain import Scene, Obstacle, Transmitter, Box
 @dataclass
 class UrbanConfig:
     seed: int = 42
-    domain_x: float = 400.0
-    domain_y: float = 400.0
+    domain_x: float = 350.0
+    domain_y: float = 350.0
+
     urban_density: float = 0.7
     grid_spacing: float = 60.0
+
     street_width: float = 8.0
     min_block_area: float = 400.0
+
     building_height_mean: float = 20.0
     building_height_std: float = 8.0
+
     n_transmitters: int = 3
     tx_height_offset: float = 2.0
-    n_rays: int = 5000
-    n_max: int = 6
+
+    n_rays: int = 100000
+    n_max: int = 5
 
 
 _MATERIALS = {
@@ -158,7 +163,7 @@ def generate_urban_scene(cfg: UrbanConfig):
                 Transmitter(
                     position=np.array([cx, cy, cz]),
                     frequency=700e6,
-                    tx_power_w=10.0,
+                    tx_power_w=250.0,
                 )
             )
 
