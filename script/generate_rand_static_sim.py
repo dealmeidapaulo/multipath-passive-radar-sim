@@ -5,7 +5,6 @@ import hashlib
 import json
 import numpy as np
 import pandas as pd
-import gc
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -16,7 +15,7 @@ CACHE_DIR = Path("cache")
 from src.core.precompute.precompute import precompute
 from src.core.cache import save_scene, save_static
 from src.core.scene.domain import Receiver
-from script.urban_scene_gen import generate_urban_scene, UrbanConfig
+from script.urban_scene_gen_01 import generate_urban_scene, UrbanConfig
 
 from src.core.rx.apply_rx import apply_rx
 
@@ -115,7 +114,6 @@ def main():
 
         if len(rx_rays) == 0:
             del static_rx
-            gc.collect()
             continue
 
 
@@ -160,7 +158,6 @@ def main():
 
         del rx_rays
         del static_rx
-        gc.collect() #garbage collector
 
     df = pd.DataFrame(rows)
     file_path = out_dir / f"{sid}.csv"
