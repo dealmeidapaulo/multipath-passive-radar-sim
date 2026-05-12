@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib
 import json
 import numpy as np
-from numba import cuda
+import pandas as pd
 import gc
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +14,7 @@ if str(_ROOT) not in sys.path:
 CACHE_DIR = Path("cache")
 
 from src.core.precompute.precompute import precompute
-from src.core.cache import save_scene, save_static, load_static
-from src.core.scene.observables import to_dataframe, to_parquet
+from src.core.cache import save_scene, save_static
 from src.core.scene.domain import Receiver
 from script.urban_scene_gen import generate_urban_scene, UrbanConfig
 
@@ -74,19 +73,26 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     _cols = [
-    "instance_id",
-    "time_step",
-    "tau_s",
-    "theta_rad",
-    "phi_rad",
-    "f_D",
-    "power_dbm",
-    "rx_pos_x",
-    "rx_pos_y",
-    "rx_pos_z",
-    "tx_pos_x",
-    "tx_pos_y",
-    "tx_pos_z"
+        "instance_id",
+        "time_step",
+        "tau_s",
+        "azimuth_rad",
+        "elevation_rad",
+        "doppler_hz",
+        "freq_hz",
+        "power_dbm",
+        "n_bounces",
+        "last_bounce_x",
+        "last_bounce_y",
+        "last_bounce_z",
+        "rx_pos_x",
+        "rx_pos_y",
+        "rx_pos_z",
+        "tx_pos_x",
+        "tx_pos_y",
+        "tx_pos_z",
+        "tx_power_w",
+        "tx_freq_hz",
     ]
 
     save_scene(scene, scene_path)
@@ -98,47 +104,68 @@ def main():
     xs, ys, mask = build_ground_mask(scene)
     # Sample RX positions
     rx_positions = sample_rx(xs, ys, mask, n=20, rng=rng)
+    rows = []
 
-    del static
-    cuda.close()
-    cuda.current_context().deallocations.clear()
 
     for i, pos in enumerate(rx_positions):
-    
-        print(i)
         rx = Receiver(position=pos, radius=10.0)
-        static = load_static(static_path,scene)
         static_rx = apply_rx(static, rx)
 
         rx_rays = static_rx.anchors
 
         if len(rx_rays) == 0:
+            del static_rx
+            gc.collect()
             continue
 
-       
-        df = to_dataframe(
-            rx_rays,
-            instance_id=sid,
-            time_step=i,
-            uav=None,
-            params={
+
+        for ray in rx_rays:
+
+            tx = scene.transmitters[ray.transmitter_id]
+
+            last_bounce = ray.points[-2]
+
+            rows.append({
+                "instance_id": sid,
+                "time_step": i,
+
+                "tau_s": ray.delay(),
+
+                "azimuth_rad": ray.azimuth(),
+                "elevation_rad": ray.elevation(),
+
+                "doppler_hz": ray.doppler_shift,
+
+                "freq_hz": ray.frequency,
+                "power_dbm": ray.power_dbm,
+
+                "n_bounces": ray.n_bounces,
+
+                "last_bounce_x": float(last_bounce[0]),
+                "last_bounce_y": float(last_bounce[1]),
+                "last_bounce_z": float(last_bounce[2]),
+
                 "rx_pos_x": float(pos[0]),
                 "rx_pos_y": float(pos[1]),
                 "rx_pos_z": float(pos[2]),
-                "domain_x": cfg.domain_x,
-                "domain_y": cfg.domain_y,
-                "seed": cfg.seed,
-            }
-        )
+
+                "tx_pos_x": float(tx.position[0]),
+                "tx_pos_y": float(tx.position[1]),
+                "tx_pos_z": float(tx.position[2]),
+
+                "tx_power_w": float(tx.tx_power_w),
+                "tx_freq_hz": float(tx.frequency),
+            })
 
 
-        file_path = out_dir / f"{sid}_rx{i}.csv"
-        df[_cols].to_csv(file_path, index=False)
-
-        del static_rx
         del rx_rays
-        cuda.current_context().deallocations.clear()
-        gc.collect()
+        del static_rx
+        gc.collect() #garbage collector
+
+    df = pd.DataFrame(rows)
+    file_path = out_dir / f"{sid}.csv"
+    df[_cols].to_csv(file_path, index=False)
+
 
 if __name__ == "__main__":
     main()

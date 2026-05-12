@@ -162,8 +162,9 @@ def generate_urban_scene(cfg: UrbanConfig):
             txs.append(
                 Transmitter(
                     position=np.array([cx, cy, cz]),
+                    tx_id=i,
                     frequency=700e6,
-                    tx_power_w=250.0,
+                    tx_power_w=250.0
                 )
             )
 
