@@ -15,7 +15,7 @@ CACHE_DIR = Path("cache")
 from src.core.precompute.precompute import precompute
 from src.core.cache import save_scene, save_static
 from src.core.scene.domain import Receiver
-from script.urban_scene_gen_01 import generate_urban_scene, UrbanConfig
+from script.urban_scene_gen import generate_urban_scene, UrbanConfig
 
 from src.core.rx.apply_rx import apply_rx
 
