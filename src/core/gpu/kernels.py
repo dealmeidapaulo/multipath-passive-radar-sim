@@ -140,8 +140,15 @@ def _reflection_intensity(dx, dy, dz, nx, ny, nz, epsilon_r):
 
 @cuda.jit(device=True)
 def _bounce(dx, dy, dz, nx, ny, nz, roughness, epsilon_r, r1, r2):
+    if dx*nx + dy*ny + dz*nz > 0.0:
+        nx = -nx; ny = -ny; nz = -nz
     nx_p, ny_p, nz_p = _perturb_normal(nx, ny, nz, roughness, r1, r2)
+    if dx*nx_p + dy*ny_p + dz*nz_p >= -1e-7:
+        nx_p = nx; ny_p = ny; nz_p = nz
     rx, ry, rz = _reflect(dx, dy, dz, nx_p, ny_p, nz_p)
+    if rx*nx + ry*ny + rz*nz <= 1e-7:
+        nx_p = nx; ny_p = ny; nz_p = nz
+        rx, ry, rz = _reflect(dx, dy, dz, nx, ny, nz)
     refl = _reflection_intensity(dx, dy, dz, nx_p, ny_p, nz_p, epsilon_r)
     return rx, ry, rz, refl
 
@@ -168,6 +175,7 @@ def trace_all_kernel(
     dir_out[0, ray_id, 0] = dx; dir_out[0, ray_id, 1] = dy; dir_out[0, ray_id, 2] = dz
     step_powers[0, ray_id] = power
     n_pts = 1
+    total_dist = 0.0
 
     for bounce_idx in range(n_max):
         t_floor, floor_nx, floor_ny, floor_nz = _ray_floor(px, py, pz, dx, dy, dz, box_min[2], box_min[0], box_min[1], box_max[0], box_max[1], 1e-5)
@@ -197,8 +205,15 @@ def trace_all_kernel(
             current_eps = obs_eps[best_obs_idx]; current_rough = obs_roughness[best_obs_idx]
 
         hit_x = px + best_t*dx; hit_y = py + best_t*dy; hit_z = pz + best_t*dz
+        if dx*best_nx + dy*best_ny + dz*best_nz > 0.0:
+            best_nx = -best_nx; best_ny = -best_ny; best_nz = -best_nz
         dist = best_t if best_t > 1e-9 else 1e-9
-        power -= 20.0 * math.log10(dist) + fspl_c
+        prev_dist = total_dist
+        total_dist += dist
+        if prev_dist < 1e-9:
+            power -= 20.0 * math.log10(total_dist) + fspl_c
+        else:
+            power -= 20.0 * math.log10(total_dist / prev_dist)
         r1, rng = _rand01(rng); r2, rng = _rand01(rng)
         dx_new, dy_new, dz_new, refl = _bounce(dx, dy, dz, best_nx, best_ny, best_nz, current_rough, current_eps, r1, r2)
         if refl < 1e-6: refl = 1e-6
@@ -212,7 +227,7 @@ def trace_all_kernel(
             n_pts_out[ray_id] = n_pts; power_out[ray_id] = power
             return
         dx = dx_new; dy = dy_new; dz = dz_new
-        px = hit_x + 1e-4 * dx; py = hit_y + 1e-4 * dy; pz = hit_z + 1e-4 * dz
+        px = hit_x + 1e-4 * best_nx; py = hit_y + 1e-4 * best_ny; pz = hit_z + 1e-4 * best_nz
     n_pts_out[ray_id] = n_pts; power_out[ray_id] = power
 
 @cuda.jit
@@ -231,6 +246,8 @@ def mini_trace_kernel(
     vx = v_in_dirs[ray_idx, 0]; vy = v_in_dirs[ray_idx, 1]; vz = v_in_dirs[ray_idx, 2]
     power = init_powers[ray_idx]
     UAV_EPS = 3.0; GROUND_EPS = 7.0
+    if vx*nx + vy*ny + vz*nz > 0.0:
+        nx = -nx; ny = -ny; nz = -nz
     rng = ((seed_offset * 6364136223846793005 + tid * 1442695040888963407 + 1) & 0x7FFFFFFF)
     if rng == 0: rng = 1
     if samp_id == 0: dx, dy, dz, _ = _bounce(vx, vy, vz, nx, ny, nz, 0.0, UAV_EPS, 0.0, 0.0)
@@ -238,9 +255,10 @@ def mini_trace_kernel(
         r1, rng = _rand01(rng); r2, rng = _rand01(rng)
         dx, dy, dz, _ = _bounce(vx, vy, vz, nx, ny, nz, uav_roughness, UAV_EPS, r1, r2)
     sample_dir_out[tid, 0] = dx; sample_dir_out[tid, 1] = dy; sample_dir_out[tid, 2] = dz
-    px += 1e-4 * dx; py += 1e-4 * dy; pz += 1e-4 * dz
+    px += 1e-4 * nx; py += 1e-4 * ny; pz += 1e-4 * nz
     pos_out[0, tid, 0] = px; pos_out[0, tid, 1] = py; pos_out[0, tid, 2] = pz
     n_pts = 1
+    total_dist = 0.0
 
     for bounce_idx in range(n_post):
         t_rx = _ray_sphere(px, py, pz, dx, dy, dz, rx_pos[0], rx_pos[1], rx_pos[2], rx_rad, 1e-5)
@@ -258,7 +276,12 @@ def mini_trace_kernel(
 
         if best_kind == 4:
             dist = best_t if best_t > 1e-9 else 1e-9
-            power -= 20.0 * math.log10(dist) + fspl_c
+            prev_dist = total_dist
+            total_dist += dist
+            if prev_dist < 1e-9:
+                power -= 20.0 * math.log10(total_dist) + fspl_c
+            else:
+                power -= 20.0 * math.log10(total_dist / prev_dist)
             pos_out[n_pts, tid, 0] = px + best_t*dx; pos_out[n_pts, tid, 1] = py + best_t*dy; pos_out[n_pts, tid, 2] = pz + best_t*dz
             n_pts += 1; power_out[tid] = power; n_pts_out[tid] = n_pts
             arr_dir_out[tid, 0] = dx; arr_dir_out[tid, 1] = dy; arr_dir_out[tid, 2] = dz
@@ -274,8 +297,15 @@ def mini_trace_kernel(
         if best_kind == 0:
             current_eps = obs_eps[best_obs_idx]; current_rough = obs_roughness[best_obs_idx]
         hit_x = px + best_t*dx; hit_y = py + best_t*dy; hit_z = pz + best_t*dz
+        if dx*best_nx + dy*best_ny + dz*best_nz > 0.0:
+            best_nx = -best_nx; best_ny = -best_ny; best_nz = -best_nz
         dist = best_t if best_t > 1e-9 else 1e-9
-        power -= 20.0 * math.log10(dist) + fspl_c
+        prev_dist = total_dist
+        total_dist += dist
+        if prev_dist < 1e-9:
+            power -= 20.0 * math.log10(total_dist) + fspl_c
+        else:
+            power -= 20.0 * math.log10(total_dist / prev_dist)
         r1, rng = _rand01(rng); r2, rng = _rand01(rng)
         dx_new, dy_new, dz_new, refl = _bounce(dx, dy, dz, best_nx, best_ny, best_nz, current_rough, current_eps, r1, r2)
         if refl < 1e-6: refl = 1e-6
@@ -286,5 +316,5 @@ def mini_trace_kernel(
             n_pts_out[tid] = n_pts; power_out[tid] = power
             return
         dx = dx_new; dy = dy_new; dz = dz_new
-        px = hit_x + 1e-4 * dx; py = hit_y + 1e-4 * dy; pz = hit_z + 1e-4 * dz
+        px = hit_x + 1e-4 * best_nx; py = hit_y + 1e-4 * best_ny; pz = hit_z + 1e-4 * best_nz
     n_pts_out[tid] = n_pts; power_out[tid] = power
